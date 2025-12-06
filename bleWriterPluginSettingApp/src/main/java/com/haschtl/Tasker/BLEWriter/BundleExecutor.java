@@ -174,6 +174,9 @@ public class BundleExecutor extends BluetoothGattCallback {
 
     private static BluetoothGattCharacteristic BuildCharacteristic(BLEBundleManager BLEBundleManager, BluetoothGatt gattService) {
         BluetoothGattCharacteristic bluetoothGattCharacteristic = BLEBundleManager.getBluetoothGattCharacteristic(gattService);
+        if (bluetoothGattCharacteristic == null) {
+            throw new IllegalStateException("Service or characteristic not found on device");
+        }
         bluetoothGattCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
         return bluetoothGattCharacteristic;
     }
@@ -198,8 +201,11 @@ public class BundleExecutor extends BluetoothGattCallback {
                     Thread.sleep(250);
                 }
             }
+            if (!accepted) {
+                Log.e("BLEWriter", "Write not accepted after retries for " + BLEBundleManager.getCharacteristicGuid());
+            }
         }catch (Exception ex){
-            Log.d("BLEED", "FireReceiver.firePluginSetting.play is off script, dropping connection", ex);
+            Log.e("BLEWriter", "Write failed", ex);
             activeConversationLock.release();
             if (!(gattDevice == null))
                 gattDevice.disconnect();

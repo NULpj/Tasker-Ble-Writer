@@ -40,9 +40,15 @@ class BLEBundleManager {
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     BluetoothGattCharacteristic getBluetoothGattCharacteristic(BluetoothGatt gattService) {
-        return gattService
-                .getService(UUID.fromString(getServiceGuid()))
-                .getCharacteristic(UUID.fromString(getCharacteristicGuid()));
+        if (gattService == null) {
+            return null;
+        }
+        UUID serviceId = UUID.fromString(getServiceGuid());
+        UUID charId = UUID.fromString(getCharacteristicGuid());
+        if (gattService.getService(serviceId) == null) {
+            return null;
+        }
+        return gattService.getService(serviceId).getCharacteristic(charId);
     }
 
 }
