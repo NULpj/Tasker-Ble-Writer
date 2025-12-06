@@ -1,4 +1,4 @@
-package com.swankdave.Tasker.BLEWriter;
+package com.haschtl.Tasker.BLEWriter;
 
 import com.twofortyfouram.log.Lumberjack;
 import android.app.Application;

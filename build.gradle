@@ -5,10 +5,15 @@ buildscript {
         google()
         mavenCentral()
         maven { url 'https://plugins.gradle.org/m2/' }
-        maven {
-            url "https://jcenter.bintray.com/"
-            content {
-                includeGroup "com.twofortyfouram"
+        def ghUser = System.getenv("GITHUB_USERNAME")
+        def ghToken = System.getenv("GITHUB_TOKEN")
+        if (ghUser && ghToken) {
+            maven {
+                url = uri("https://maven.pkg.github.com/twofortyfouram/android-monorepo")
+                credentials {
+                    username = ghUser
+                    password = ghToken
+                }
             }
         }
     }
@@ -22,10 +27,15 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven {
-            url "https://jcenter.bintray.com/"
-            content {
-                includeGroup "com.twofortyfouram"
+        def ghUser = System.getenv("GITHUB_USERNAME")
+        def ghToken = System.getenv("GITHUB_TOKEN")
+        if (ghUser && ghToken) {
+            maven {
+                url = uri("https://maven.pkg.github.com/twofortyfouram/android-monorepo")
+                credentials {
+                    username = ghUser
+                    password = ghToken
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-package com.swankdave.Tasker.BLEWriter;
+package com.haschtl.Tasker.BLEWriter;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -23,6 +23,7 @@ public class BundleExecutor extends BluetoothGattCallback {
     private BLEBundleManager currentBLEBundleManager;
     private Queue<BLEBundleManager> todo = new ConcurrentLinkedQueue<>();
     private BluetoothGatt gattDevice;
+    private BluetoothAdapter bluetoothAdapter;
     private static Semaphore activeConversationLock = new Semaphore(1);
     static BundleExecutor executor;
 
@@ -52,8 +53,12 @@ public class BundleExecutor extends BluetoothGattCallback {
 
     private BundleExecutor(Context context, Bundle bundle){
         currentBLEBundleManager = new BLEBundleManager(bundle);
-        BluetoothDevice device = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(currentBLEBundleManager.getDeviceAddress());
-        gattDevice =  device.connectGatt(context, true, this);
+        BluetoothManager manager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        bluetoothAdapter = manager != null ? manager.getAdapter() : BluetoothAdapter.getDefaultAdapter();
+        BluetoothDevice device = bluetoothAdapter != null ? bluetoothAdapter.getRemoteDevice(currentBLEBundleManager.getDeviceAddress()) : null;
+        if (device != null) {
+            gattDevice =  device.connectGatt(context, true, this);
+        }
         executor = this;
     }
 
@@ -169,7 +174,6 @@ public class BundleExecutor extends BluetoothGattCallback {
 
     private static BluetoothGattCharacteristic BuildCharacteristic(BLEBundleManager BLEBundleManager, BluetoothGatt gattService) {
         BluetoothGattCharacteristic bluetoothGattCharacteristic = BLEBundleManager.getBluetoothGattCharacteristic(gattService);
-        bluetoothGattCharacteristic.setValue(toPayload(BLEBundleManager));
         bluetoothGattCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
         return bluetoothGattCharacteristic;
     }
@@ -178,13 +182,22 @@ public class BundleExecutor extends BluetoothGattCallback {
         try{
             currentBLEBundleManager = BLEBundleManager;
             int i = 0;
-            while (!gattService.writeCharacteristic(BuildCharacteristic(BLEBundleManager, gattService)) & (i < 4)) {
-                //Log.d("BLEED", "FireReceiver.firePluginSetting.play: write was not accepted");
-                i = i + 1;
-                Thread.sleep(250);
+            BluetoothGattCharacteristic characteristic = BuildCharacteristic(BLEBundleManager, gattService);
+            byte[] payload = toPayload(BLEBundleManager);
+            boolean accepted = false;
+            while (!accepted && (i < 4)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    int status = gattService.writeCharacteristic(characteristic, payload, characteristic.getWriteType());
+                    accepted = status == BluetoothGatt.GATT_SUCCESS;
+                } else {
+                    characteristic.setValue(payload);
+                    accepted = gattService.writeCharacteristic(characteristic);
+                }
+                if (!accepted) {
+                    i = i + 1;
+                    Thread.sleep(250);
+                }
             }
-            //if (i < 4)
-            //    Log.d("BLEED", "FireReceiver.firePluginSetting.play: write was accepted");
         }catch (Exception ex){
             Log.d("BLEED", "FireReceiver.firePluginSetting.play is off script, dropping connection", ex);
             activeConversationLock.release();

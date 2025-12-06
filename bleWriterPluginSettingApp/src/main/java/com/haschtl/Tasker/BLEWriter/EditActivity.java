@@ -1,4 +1,4 @@
-package com.swankdave.Tasker.BLEWriter;
+package com.haschtl.Tasker.BLEWriter;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -27,6 +27,8 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import org.json.JSONObject;
 
 import com.twofortyfouram.locale.sdk.client.ui.activity.AbstractAppCompatPluginActivity;
 import com.twofortyfouram.spackle.AppBuildInfo;
@@ -75,10 +77,16 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         Bundle previousBundle = getIntent().getBundleExtra("com.twofortyfouram.locale.intent.extra.BUNDLE");
         String previousBlurb = getIntent().getStringExtra("com.twofortyfouram.locale.intent.extra.BLURB");
         if (previousBundle != null) {
-            onPostCreateWithPreviousResult(previousBundle, previousBlurb == null ? "" : previousBlurb);
+            JSONObject previousJson = jsonFromBundle(previousBundle);
+            if (previousJson != null) {
+                onPostCreateWithPreviousResult(previousJson, previousBlurb == null ? "" : previousBlurb);
+            }
             requestInitialPermissions();
             if (standaloneContainer != null) standaloneContainer.setVisibility(View.GONE);
         } else {
+            if (savedInstanceState != null) {
+                restoreFromInstanceState(savedInstanceState);
+            }
             if (standaloneContainer != null) standaloneContainer.setVisibility(View.VISIBLE);
         }
 
@@ -87,8 +95,8 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
 
 
     @Override
-    public void onPostCreateWithPreviousResult(@NonNull final Bundle previousBnd, @NonNull final String previousBlurb) {
-        BLEBundleManager previousBundle = new BLEBundleManager(previousBnd);
+    public void onPostCreateWithPreviousResult(@NonNull final JSONObject previousBnd, @NonNull final String previousBlurb) {
+        BLEBundleManager previousBundle = new BLEBundleManager(bundleFromJson(previousBnd));
         ((EditText) findViewById(R.id.BLE_Device_Address)).setText(previousBundle.getDeviceAddress());
         ((EditText) findViewById(R.id.BLE_Service_Guid)).setText(previousBundle.getServiceGuid());
         ((EditText) findViewById(R.id.BLE_Characteristic_Guid)).setText(previousBundle.getCharacteristicGuid());
@@ -99,37 +107,42 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
 
 
     @Override
-    public boolean isBundleValid(@NonNull final Bundle bundle) {
-        return true;
+    public boolean isJsonValid(@NonNull final JSONObject jsonObject) {
+        return jsonObject.has("BLE_Address") && jsonObject.has("BLE_Service_Guid")
+                && jsonObject.has("BLE_Characteristic_Guid") && jsonObject.has("BLE_Value");
     }
 
     @Nullable
     @Override
-    public Bundle getResultBundle() {
-        final Bundle result = new Bundle();
-        BLEBundleManager bundleInterface = new BLEBundleManager(result);
-
-        bundleInterface.setDeviceAddress(((EditText) findViewById(R.id.BLE_Device_Address)).getText().toString());
-        bundleInterface.setServiceGuid(((EditText) findViewById(R.id.BLE_Service_Guid)).getText().toString());
-        bundleInterface.setCharacteristicGuid(((EditText) findViewById(R.id.BLE_Characteristic_Guid)).getText().toString());
-        bundleInterface.setValue(((EditText) findViewById(R.id.BLE_Value)).getText().toString());
-        bundleInterface.setSendAsText(((CheckBox) findViewById(R.id.BLE_Send_As_Text)).isChecked());
-        result.putInt("com.swankdave.Tasker.BLEWriter.extra.INT_VERSION_CODE", AppBuildInfo.getVersionCode(getApplicationContext()));
-        CurrentBundle = result;
-
-        return result;
+    public JSONObject getResultJson() {
+        try {
+            BLEBundleManager bundleInterface = new BLEBundleManager(new Bundle());
+            bundleInterface.setDeviceAddress(((EditText) findViewById(R.id.BLE_Device_Address)).getText().toString());
+            bundleInterface.setServiceGuid(((EditText) findViewById(R.id.BLE_Service_Guid)).getText().toString());
+            bundleInterface.setCharacteristicGuid(((EditText) findViewById(R.id.BLE_Characteristic_Guid)).getText().toString());
+            bundleInterface.setValue(((EditText) findViewById(R.id.BLE_Value)).getText().toString());
+            bundleInterface.setSendAsText(((CheckBox) findViewById(R.id.BLE_Send_As_Text)).isChecked());
+            bundleInterface.toBundle().putLong("com.haschtl.Tasker.BLEWriter.extra.INT_VERSION_CODE", AppBuildInfo.getVersionCode(getApplicationContext()));
+            return bundleInterfaceToJson(bundleInterface);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     @NonNull
     @Override
-    public String getResultBlurb(@NonNull final Bundle bundle) {
-        BLEBundleManager BLEBundleManager = new BLEBundleManager(bundle);
-        if (BLEBundleManager.getValue().isEmpty()) {
-            return "Blank";
+    public String getResultBlurb(@NonNull final JSONObject jsonObject) {
+        try {
+            BLEBundleManager mgr = new BLEBundleManager(bundleFromJson(jsonObject));
+            if (mgr.getValue().isEmpty()) {
+                return "Blank";
+            }
+            if (mgr.getSendAsText())
+                return mgr.getValue() + " (text)";
+            return mgr.getValue();
+        } catch (Exception ex) {
+            return "Invalid";
         }
-        if (BLEBundleManager.getSendAsText())
-            return BLEBundleManager.getValue() + " (text)";
-        return BLEBundleManager.getValue();
     }
 
     @Override
@@ -166,6 +179,55 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         stopScan(true);
     }
 
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("STATE_DEVICE", ((EditText) findViewById(R.id.BLE_Device_Address)).getText().toString());
+        outState.putString("STATE_SERVICE", ((EditText) findViewById(R.id.BLE_Service_Guid)).getText().toString());
+        outState.putString("STATE_CHARACTERISTIC", ((EditText) findViewById(R.id.BLE_Characteristic_Guid)).getText().toString());
+        outState.putString("STATE_VALUE", ((EditText) findViewById(R.id.BLE_Value)).getText().toString());
+        outState.putBoolean("STATE_TEXT_MODE", ((CheckBox) findViewById(R.id.BLE_Send_As_Text)).isChecked());
+    }
+
+    private void restoreFromInstanceState(@NonNull Bundle state) {
+        ((EditText) findViewById(R.id.BLE_Device_Address)).setText(state.getString("STATE_DEVICE", ""));
+        ((EditText) findViewById(R.id.BLE_Service_Guid)).setText(state.getString("STATE_SERVICE", ""));
+        ((EditText) findViewById(R.id.BLE_Characteristic_Guid)).setText(state.getString("STATE_CHARACTERISTIC", ""));
+        ((EditText) findViewById(R.id.BLE_Value)).setText(state.getString("STATE_VALUE", ""));
+        ((CheckBox) findViewById(R.id.BLE_Send_As_Text)).setChecked(state.getBoolean("STATE_TEXT_MODE", false));
+    }
+
+    private JSONObject bundleInterfaceToJson(BLEBundleManager mgr) throws Exception {
+        JSONObject obj = new JSONObject();
+        obj.put("BLE_Address", mgr.getDeviceAddress());
+        obj.put("BLE_Service_Guid", mgr.getServiceGuid());
+        obj.put("BLE_Characteristic_Guid", mgr.getCharacteristicGuid());
+        obj.put("BLE_Value", mgr.getValue());
+        obj.put("BLE_Send_As_Text", mgr.getSendAsText());
+        return obj;
+    }
+
+    private Bundle bundleFromJson(JSONObject jsonObject) {
+        Bundle bundle = new Bundle();
+        BLEBundleManager mgr = new BLEBundleManager(bundle);
+        mgr.setDeviceAddress(jsonObject.optString("BLE_Address", ""));
+        mgr.setServiceGuid(jsonObject.optString("BLE_Service_Guid", ""));
+        mgr.setCharacteristicGuid(jsonObject.optString("BLE_Characteristic_Guid", ""));
+        mgr.setValue(jsonObject.optString("BLE_Value", ""));
+        mgr.setSendAsText(jsonObject.optBoolean("BLE_Send_As_Text", false));
+        return bundle;
+    }
+
+    private JSONObject jsonFromBundle(Bundle bundle) {
+        String jsonString = bundle.getString("com.twofortyfouram.locale.intent.extra.STRING_JSON");
+        if (jsonString == null) return null;
+        try {
+            return new JSONObject(jsonString);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
     private void requestInitialPermissions() {
         if (!hasLocationPermission()) {
             requestLocationPermission();
@@ -181,10 +243,12 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
             return;
         }
         if (!hasScanPermission()) {
+            Toast.makeText(this, R.string.ble_error_permission_denied, Toast.LENGTH_SHORT).show();
             requestScanPermission();
             return;
         }
         if (!hasLocationPermission()) {
+            Toast.makeText(this, R.string.ble_error_location_permission_denied, Toast.LENGTH_SHORT).show();
             requestLocationPermission();
             return;
         }

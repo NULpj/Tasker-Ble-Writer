@@ -1,4 +1,4 @@
-package com.swankdave.Tasker.BLEWriter;
+package com.haschtl.Tasker.BLEWriter;
 
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -33,6 +33,10 @@ class BLEBundleManager {
 
     boolean getSendAsText(){ return bundle.getBoolean("BLE_Send_As_Text", false); }
     void setSendAsText(boolean sendAsText){ bundle.putBoolean("BLE_Send_As_Text", sendAsText); }
+
+    Bundle toBundle() {
+        return bundle;
+    }
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     BluetoothGattCharacteristic getBluetoothGattCharacteristic(BluetoothGatt gattService) {

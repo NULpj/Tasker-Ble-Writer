@@ -6,7 +6,6 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools"
-          package="com.swankdave.Tasker.BLEWriter"
           android:installLocation="internalOnly">
 
     <!-- This allows the plug-in to appear on non-touchscreen devices like Google TV.
@@ -39,7 +38,7 @@
             android:usesPermissionFlags="neverForLocation"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <application
-            android:name="com.swankdave.Tasker.BLEWriter.PluginApplication"
+            android:name="com.haschtl.Tasker.BLEWriter.PluginApplication"
             android:allowBackup="true"
             android:fullBackupContent="true"
             android:hardwareAccelerated="true"
@@ -47,7 +46,7 @@
             android:label="@string/app_name" tools:ignore="UnusedAttribute">
 
         <activity
-                android:name="com.swankdave.Tasker.BLEWriter.EditActivity"
+                android:name="com.haschtl.Tasker.BLEWriter.EditActivity"
                 android:exported="false"
                 android:label="@string/plugin_name"
                 android:theme="@style/Theme.AppCompat"
@@ -65,11 +64,11 @@
                  - The Activity requires permissions not available to the host
         -->
         <activity-alias
-                android:name="com.swankdave.Tasker.BLEWriter.PluginActivity"
+                android:name="com.haschtl.Tasker.BLEWriter.PluginActivity"
                 android:exported="true"
                 android:icon="@drawable/ic_tasker_ble_plugin"
                 android:label="@string/plugin_name"
-                android:targetActivity="com.swankdave.Tasker.BLEWriter.EditActivity"
+                android:targetActivity="com.haschtl.Tasker.BLEWriter.EditActivity"
                 tools:ignore="ExportedActivity">
             <!-- this Intent filter allows the plug-in to be discovered by the host. -->
             <intent-filter>
@@ -102,7 +101,7 @@
                 - There are multiple BroadcastReceivers for com.twofortyfouram.locale.intent.action.FIRE_SETTING
         -->
         <receiver
-                android:name="com.swankdave.Tasker.BLEWriter.FireReceiver"
+                android:name="com.haschtl.Tasker.BLEWriter.FireReceiver"
                 android:exported="true"
                 android:process=":background"
                 tools:ignore="ExportedReceiver">
