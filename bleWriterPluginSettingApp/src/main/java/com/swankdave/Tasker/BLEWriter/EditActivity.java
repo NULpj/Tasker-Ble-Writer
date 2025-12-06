@@ -157,13 +157,13 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopScan();
+        stopScan(true);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        stopScan();
+        stopScan(true);
     }
 
     private void requestInitialPermissions() {
@@ -206,7 +206,7 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
 
         scanListAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
         scanDialog = new AlertDialog.Builder(this)
-                .setTitle(R.string.ble_scan_title)
+                .setTitle(R.string.ble_scan_status_scanning)
                 .setAdapter(scanListAdapter, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int which) {
@@ -215,24 +215,28 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
                             String address = entry.substring(entry.lastIndexOf('(') + 1, entry.lastIndexOf(')'));
                             ((EditText) findViewById(R.id.BLE_Device_Address)).setText(address);
                         }
-                        stopScan();
+                        stopScan(true);
                     }
                 })
-                .setOnCancelListener(dialog -> stopScan())
+                .setOnCancelListener(dialog -> stopScan(true))
                 .create();
         scanDialog.show();
 
         bluetoothLeScanner.startScan(scanCallback);
-        handler.postDelayed(this::stopScan, SCAN_DURATION_MS);
+        handler.postDelayed(() -> stopScan(false), SCAN_DURATION_MS);
     }
 
-    private void stopScan() {
+    private void stopScan(boolean dismissDialog) {
         if (bluetoothLeScanner != null && isScanning) {
             bluetoothLeScanner.stopScan(scanCallback);
         }
         isScanning = false;
         if (scanDialog != null && scanDialog.isShowing()) {
-            scanDialog.dismiss();
+            if (dismissDialog) {
+                scanDialog.dismiss();
+            } else {
+                scanDialog.setTitle(getString(R.string.ble_scan_status_finished));
+            }
         }
     }
 
@@ -255,7 +259,7 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         public void onScanFailed(int errorCode) {
             runOnUiThread(() -> {
                 Toast.makeText(EditActivity.this, getString(R.string.ble_error_scan_failed, errorCode), Toast.LENGTH_SHORT).show();
-                stopScan();
+                stopScan(false);
             });
         }
     };

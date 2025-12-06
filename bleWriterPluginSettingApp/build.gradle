@@ -5,7 +5,7 @@ dependencies {
     implementation 'androidx.annotation:annotation:1.7.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
 
-    // Local stubs for Tasker/Locale client APIs (see src/main/java/com/twofortyfouram/*).
+    // Local implementations of Tasker/Locale client APIs are bundled in src/main/java/com/twofortyfouram/*
 }
 
 android {

@@ -1,5 +1,6 @@
 package com.twofortyfouram.locale.sdk.client.ui.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -7,12 +8,13 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 /**
- * Minimal stub replacement for the original Locale/Tasker client activity to allow building without
- * the external dependency.
+ * Simplified implementation of the Locale/Tasker plugin edit Activity base class.
  */
 public abstract class AbstractAppCompatPluginActivity extends AppCompatActivity {
 
-    // Flag used by the original library to communicate cancellation; kept for compatibility.
+    protected static final String EXTRA_BUNDLE = "com.twofortyfouram.locale.intent.extra.BUNDLE";
+    protected static final String EXTRA_BLURB = "com.twofortyfouram.locale.intent.extra.BLURB";
+
     protected boolean mIsCancelled = false;
 
     @Override
@@ -25,12 +27,12 @@ public abstract class AbstractAppCompatPluginActivity extends AppCompatActivity 
         if (!mIsCancelled) {
             Bundle resultBundle = getResultBundle();
             String blurb = resultBundle != null ? getResultBlurb(resultBundle) : "";
-            android.content.Intent result = new android.content.Intent();
+            Intent resultIntent = new Intent();
             if (resultBundle != null) {
-                result.putExtra("com.twofortyfouram.locale.intent.extra.BUNDLE", resultBundle);
+                resultIntent.putExtra(EXTRA_BUNDLE, resultBundle);
             }
-            result.putExtra("com.twofortyfouram.locale.intent.extra.BLURB", blurb);
-            setResult(RESULT_OK, result);
+            resultIntent.putExtra(EXTRA_BLURB, blurb);
+            setResult(RESULT_OK, resultIntent);
         } else {
             setResult(RESULT_CANCELED);
         }
