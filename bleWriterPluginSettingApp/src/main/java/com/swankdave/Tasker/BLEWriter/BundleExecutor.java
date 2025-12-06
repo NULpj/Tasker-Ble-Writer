@@ -12,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
+import java.nio.charset.Charset;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
@@ -33,6 +34,20 @@ public class BundleExecutor extends BluetoothGattCallback {
                     + Character.digit(s.charAt(i+1), 16));
         }
         return data;
+    }
+
+    private static byte[] toPayload(BLEBundleManager BLEBundleManager) {
+        if (BLEBundleManager.getSendAsText()) {
+            return BLEBundleManager.getValue().getBytes(Charset.forName("UTF-8"));
+        }
+
+        String sanitizedHex = BLEBundleManager.getValue().replaceAll("\\s", "");
+        if ((sanitizedHex.length() % 2) != 0) {
+            Log.w("BLEED", "Odd number of hex characters supplied; trimming the last nibble");
+            sanitizedHex = sanitizedHex.substring(0, sanitizedHex.length() - 1);
+        }
+
+        return hexStringToByteArray(sanitizedHex);
     }
 
     private BundleExecutor(Context context, Bundle bundle){
@@ -154,7 +169,7 @@ public class BundleExecutor extends BluetoothGattCallback {
 
     private static BluetoothGattCharacteristic BuildCharacteristic(BLEBundleManager BLEBundleManager, BluetoothGatt gattService) {
         BluetoothGattCharacteristic bluetoothGattCharacteristic = BLEBundleManager.getBluetoothGattCharacteristic(gattService);
-        bluetoothGattCharacteristic.setValue(hexStringToByteArray(BLEBundleManager.getValue()));
+        bluetoothGattCharacteristic.setValue(toPayload(BLEBundleManager));
         bluetoothGattCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
         return bluetoothGattCharacteristic;
     }

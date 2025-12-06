@@ -31,6 +31,9 @@ class BLEBundleManager {
     String getValue(){ return bundle.getString("BLE_Value", "");}
     void setValue(String value){ bundle.putString("BLE_Value", value);}
 
+    boolean getSendAsText(){ return bundle.getBoolean("BLE_Send_As_Text", false); }
+    void setSendAsText(boolean sendAsText){ bundle.putBoolean("BLE_Send_As_Text", sendAsText); }
+
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     BluetoothGattCharacteristic getBluetoothGattCharacteristic(BluetoothGatt gattService) {
         return gattService

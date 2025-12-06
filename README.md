@@ -1,14 +1,19 @@
 # Basic-Ble-Writer
 Plugin for Tasker that allows the user to write arbitrary binary arrays to Bluetooth Low Energy Devices.
 
+> This repository is a fork that adds the ability to send values as plain UTF-8 text (serial-style) in addition to the original hex payload mode.
+
 Within tasker the action is called "Basic BLE Write"
+
+Use the "Scan BLE devices" button in the configuration screen to pick a nearby device; the address field will be filled automatically.
 
 Binary Arrays can be written to devices provided the user can supply:
 * The device address in the format FF:FF:FF:FF:FF:FF (where "F" stands for any hex character)
 * The service address/GUID: FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
 * The characteristic address/GUID: FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF.
 
-Values must be written in hex pairs, odd numbers of characters should fail to send, but I havent confirmed it.
+Values can be sent either as hex pairs (the original behavior) or as plain UTF-8 text for serial-style payloads.
+Use the "Send value as plain text (serial/UTF-8)" checkbox in the Tasker action to switch between modes.
 
 I wrote this to aide me in the construction of my very own, very simple, BLE device, so the functionality fits my use case.  
 

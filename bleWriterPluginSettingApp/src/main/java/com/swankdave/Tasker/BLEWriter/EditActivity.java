@@ -1,14 +1,25 @@
 package com.swankdave.Tasker.BLEWriter;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
+import android.content.DialogInterface;
 import android.os.Bundle;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import com.twofortyfouram.locale.sdk.client.ui.activity.AbstractAppCompatPluginActivity;
 import com.twofortyfouram.spackle.AppBuildInfo;
@@ -19,6 +30,12 @@ import net.jcip.annotations.NotThreadSafe;
 public final class EditActivity extends AbstractAppCompatPluginActivity {
     //private final static int REQUEST_ENABLE_BT = 1;
     Bundle CurrentBundle;
+    private BluetoothAdapter bluetoothAdapter;
+    private boolean isScanning = false;
+    private Handler handler = new Handler(Looper.getMainLooper());
+    private ArrayAdapter<String> scanListAdapter;
+    private AlertDialog scanDialog;
+    private static final long SCAN_DURATION_MS = 8000;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -32,6 +49,11 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         ActivityCompat.requestPermissions(this,
                 new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                 0);
+
+        final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
+        bluetoothAdapter = bluetoothManager != null ? bluetoothManager.getAdapter() : null;
+
+        findViewById(R.id.BLE_Scan_Button).setOnClickListener(v -> startScan());
     }
 
 
@@ -42,6 +64,7 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         ((EditText) findViewById(R.id.BLE_Service_Guid)).setText(previousBundle.getServiceGuid());
         ((EditText) findViewById(R.id.BLE_Characteristic_Guid)).setText(previousBundle.getCharacteristicGuid());
         ((EditText) findViewById(R.id.BLE_Value)).setText(previousBundle.getValue());
+        ((CheckBox) findViewById(R.id.BLE_Send_As_Text)).setChecked(previousBundle.getSendAsText());
     }
 
 
@@ -61,6 +84,7 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         bundleInterface.setServiceGuid(((EditText) findViewById(R.id.BLE_Service_Guid)).getText().toString());
         bundleInterface.setCharacteristicGuid(((EditText) findViewById(R.id.BLE_Characteristic_Guid)).getText().toString());
         bundleInterface.setValue(((EditText) findViewById(R.id.BLE_Value)).getText().toString());
+        bundleInterface.setSendAsText(((CheckBox) findViewById(R.id.BLE_Send_As_Text)).isChecked());
         result.putInt("com.swankdave.Tasker.BLEWriter.extra.INT_VERSION_CODE", AppBuildInfo.getVersionCode(getApplicationContext()));
         CurrentBundle = result;
 
@@ -74,6 +98,8 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         if (BLEBundleManager.getValue().isEmpty()) {
             return "Blank";
         }
+        if (BLEBundleManager.getSendAsText())
+            return BLEBundleManager.getValue() + " (text)";
         return BLEBundleManager.getValue();
     }
 
@@ -97,5 +123,79 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopScan();
+    }
+
+    private void startScan() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            Toast.makeText(this, R.string.ble_error_not_supported, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
+            Toast.makeText(this, R.string.ble_error_bluetooth_unavailable, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (isScanning) {
+            return;
+        }
+        isScanning = true;
+
+        scanListAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+        scanDialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.ble_scan_title)
+                .setAdapter(scanListAdapter, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int which) {
+                        String entry = scanListAdapter.getItem(which);
+                        if (entry != null && entry.contains("(") && entry.contains(")")) {
+                            String address = entry.substring(entry.lastIndexOf('(') + 1, entry.lastIndexOf(')'));
+                            ((EditText) findViewById(R.id.BLE_Device_Address)).setText(address);
+                        }
+                        stopScan();
+                    }
+                })
+                .setOnCancelListener(dialog -> stopScan())
+                .create();
+        scanDialog.show();
+
+        bluetoothAdapter.startLeScan(leScanCallback);
+        handler.postDelayed(this::stopScan, SCAN_DURATION_MS);
+    }
+
+    private void stopScan() {
+        if (bluetoothAdapter != null && isScanning) {
+            bluetoothAdapter.stopLeScan(leScanCallback);
+        }
+        isScanning = false;
+        if (scanDialog != null && scanDialog.isShowing()) {
+            scanDialog.dismiss();
+        }
+    }
+
+    private final BluetoothAdapter.LeScanCallback leScanCallback = new BluetoothAdapter.LeScanCallback() {
+        @Override
+        public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
+            runOnUiThread(() -> addDeviceToList(device));
+        }
+    };
+
+    private void addDeviceToList(BluetoothDevice device) {
+        if (scanListAdapter == null || device == null || device.getAddress() == null) {
+            return;
+        }
+        for (int i = 0; i < scanListAdapter.getCount(); i++) {
+            if (scanListAdapter.getItem(i) != null && scanListAdapter.getItem(i).contains(device.getAddress())) {
+                return;
+            }
+        }
+        String label = (device.getName() == null || device.getName().isEmpty()) ?
+                getString(R.string.ble_scan_unknown) : device.getName();
+        scanListAdapter.add(label + " (" + device.getAddress() + ")");
+        scanListAdapter.notifyDataSetChanged();
     }
 }
