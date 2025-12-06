@@ -2,20 +2,32 @@ apply plugin: 'com.github.ben-manes.versions'
 
 buildscript {
     repositories {
-        maven { url 'https://maven.google.com' }
-        jcenter()
         google()
+        mavenCentral()
+        maven { url 'https://plugins.gradle.org/m2/' }
+        maven {
+            url "https://jcenter.bintray.com/"
+            content {
+                includeGroup "com.twofortyfouram"
+            }
+        }
     }
     dependencies {
-        classpath group:'com.android.tools.build', name:'gradle', version: '3.4.2'
-        classpath group:'com.github.ben-manes', name:'gradle-versions-plugin', version:"${GRADLE_VERSIONS_PLUGIN_VERSION_MATCHER}"
+        classpath group:'com.android.tools.build', name:'gradle', version: '8.3.2'
+        classpath group:'com.github.ben-manes', name:'gradle-versions-plugin', version:'0.46.0'
     }
 }
 
 allprojects {
     repositories {
-        maven { url 'https://maven.google.com' }
-        jcenter()
+        google()
+        mavenCentral()
+        maven {
+            url "https://jcenter.bintray.com/"
+            content {
+                includeGroup "com.twofortyfouram"
+            }
+        }
     }
 
     // Forces all dependencies to be resolved.  Useful in continuous integration

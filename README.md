@@ -22,3 +22,8 @@ I will likely add type selection for the value to be written in the near future.
 This Module could really really really use tasker variable interpolation, but I don't have the time at this moment to sort that out.  
 
 This code may be modified and used freely by other products and projects, excepting in the case where this project makes up 50% or more of said project or product: Lets work together on this to make it better for everyone!
+
+## Build
+
+* Java 21 and Android SDK Platform 34 / Build-Tools 34.0.0
+* From the repo root: `./gradlew clean assembleDebug`

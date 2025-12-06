@@ -76,4 +76,27 @@
         android:layout_marginRight="6dip"
         android:text="@string/ble_Value_Send_As_Text_Label" />
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="6dip"
+        android:layout_marginTop="12dip"
+        android:layout_marginRight="6dip"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/BLE_Cancel_Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_cancel" />
+
+        <Button
+            android:id="@+id/BLE_Save_Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="12dp"
+            android:text="@string/ble_save" />
+    </LinearLayout>
+
 </LinearLayout>

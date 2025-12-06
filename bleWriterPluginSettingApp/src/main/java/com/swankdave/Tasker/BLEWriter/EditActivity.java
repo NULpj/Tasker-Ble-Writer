@@ -6,17 +6,20 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -36,6 +39,8 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
     private ArrayAdapter<String> scanListAdapter;
     private AlertDialog scanDialog;
     private static final long SCAN_DURATION_MS = 8000;
+    private static final int REQUEST_BT_SCAN = 1001;
+    private static final int REQUEST_LOCATION = 1002;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -50,10 +55,31 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
                 new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                 0);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT},
+                    0);
+        }
+
         final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
         bluetoothAdapter = bluetoothManager != null ? bluetoothManager.getAdapter() : null;
 
         findViewById(R.id.BLE_Scan_Button).setOnClickListener(v -> startScan());
+        ((Button) findViewById(R.id.BLE_Save_Button)).setOnClickListener(v -> {
+            mIsCancelled = false;
+            finish();
+        });
+        ((Button) findViewById(R.id.BLE_Cancel_Button)).setOnClickListener(v -> {
+            mIsCancelled = true;
+            finish();
+        });
+
+        // Load previous bundle from host if provided.
+        Bundle previousBundle = getIntent().getBundleExtra("com.twofortyfouram.locale.intent.extra.BUNDLE");
+        String previousBlurb = getIntent().getStringExtra("com.twofortyfouram.locale.intent.extra.BLURB");
+        if (previousBundle != null) {
+            onPostCreateWithPreviousResult(previousBundle, previousBlurb == null ? "" : previousBlurb);
+        }
     }
 
 
@@ -136,6 +162,14 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
             Toast.makeText(this, R.string.ble_error_not_supported, Toast.LENGTH_SHORT).show();
             return;
         }
+        if (!hasScanPermission()) {
+            requestScanPermission();
+            return;
+        }
+        if (!hasLocationPermission()) {
+            requestLocationPermission();
+            return;
+        }
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
             Toast.makeText(this, R.string.ble_error_bluetooth_unavailable, Toast.LENGTH_SHORT).show();
             return;
@@ -197,5 +231,50 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
                 getString(R.string.ble_scan_unknown) : device.getName();
         scanListAdapter.add(label + " (" + device.getAddress() + ")");
         scanListAdapter.notifyDataSetChanged();
+    }
+
+    private boolean hasScanPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return true;
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == android.content.pm.PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestScanPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT},
+                    REQUEST_BT_SCAN);
+        }
+    }
+
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestLocationPermission() {
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                REQUEST_LOCATION);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_BT_SCAN) {
+            if (hasScanPermission()) {
+                startScan();
+            } else {
+                Toast.makeText(this, R.string.ble_error_permission_denied, Toast.LENGTH_SHORT).show();
+            }
+        } else if (requestCode == REQUEST_LOCATION) {
+            if (hasLocationPermission()) {
+                startScan();
+            } else {
+                Toast.makeText(this, R.string.ble_error_location_permission_denied, Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }

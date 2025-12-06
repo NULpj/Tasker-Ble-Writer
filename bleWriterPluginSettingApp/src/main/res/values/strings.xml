@@ -2,10 +2,10 @@
 <resources>
 
     <!-- App name -->
-    <string name="app_name">BLE Toolbox</string>
+    <string name="app_name">Tasker-BLE-Writer</string>
 
     <!-- Name of the plug-in that appears in Locale -->
-    <string name="plugin_name">Basic BLE Writer</string>
+    <string name="plugin_name">Tasker-BLE-Writer</string>
 
     <!-- Hint text in the toast edit text -->
     <string name="message_hint">BLE Attribute Write</string>
@@ -25,5 +25,9 @@
     <string name="ble_scan_unknown">Unknown device</string>
     <string name="ble_error_bluetooth_unavailable">Bluetooth is not available or disabled</string>
     <string name="ble_error_not_supported">BLE scanning is not supported on this device</string>
+    <string name="ble_error_permission_denied">Bluetooth scan permission not granted</string>
+    <string name="ble_error_location_permission_denied">Location permission not granted</string>
+    <string name="ble_save">Save</string>
+    <string name="ble_cancel">Cancel</string>
 
 </resources>
