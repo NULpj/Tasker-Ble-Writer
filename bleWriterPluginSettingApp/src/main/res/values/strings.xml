@@ -25,9 +25,18 @@
     <string name="ble_scan_unknown">Unknown device</string>
     <string name="ble_error_bluetooth_unavailable">Bluetooth is not available or disabled</string>
     <string name="ble_error_not_supported">BLE scanning is not supported on this device</string>
+    <string name="ble_error_scan_failed">Scan failed (code %1$d)</string>
     <string name="ble_error_permission_denied">Bluetooth scan permission not granted</string>
     <string name="ble_error_location_permission_denied">Location permission not granted</string>
+    <string name="ble_permission_title">Permission required</string>
+    <string name="ble_permission_rationale_scan">Scanning requires Bluetooth scan/connect permission. Please grant to discover devices.</string>
+    <string name="ble_permission_rationale_location">Scanning may need location permission on your device. Please grant to continue.</string>
+    <string name="ble_scan_button_permission_needed">Grant permissions to scan</string>
     <string name="ble_save">Save</string>
     <string name="ble_cancel">Cancel</string>
+    <string name="ble_intro_title">Tasker-BLE-Writer</string>
+    <string name="ble_intro_message">Dieses Plugin ist für Tasker/Locale. Starte es idealerweise aus Tasker. Für Scans brauchst du Bluetooth- und ggf. Standort-Berechtigungen.</string>
+    <string name="ble_intro_open_tasker">Tasker öffnen</string>
+    <string name="ble_open_tasker_not_found">Tasker nicht gefunden. Installiere Tasker, um das Plugin zu nutzen.</string>
 
 </resources>

@@ -5,6 +5,9 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -18,6 +21,7 @@ import androidx.core.content.ContextCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -34,6 +38,7 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
     //private final static int REQUEST_ENABLE_BT = 1;
     Bundle CurrentBundle;
     private BluetoothAdapter bluetoothAdapter;
+    private BluetoothLeScanner bluetoothLeScanner;
     private boolean isScanning = false;
     private Handler handler = new Handler(Looper.getMainLooper());
     private ArrayAdapter<String> scanListAdapter;
@@ -41,30 +46,22 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
     private static final long SCAN_DURATION_MS = 8000;
     private static final int REQUEST_BT_SCAN = 1001;
     private static final int REQUEST_LOCATION = 1002;
+    private Button scanButton;
+    private View standaloneContainer;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                0);
-
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                0);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT},
-                    0);
-        }
-
         final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
         bluetoothAdapter = bluetoothManager != null ? bluetoothManager.getAdapter() : null;
 
-        findViewById(R.id.BLE_Scan_Button).setOnClickListener(v -> startScan());
+        scanButton = findViewById(R.id.BLE_Scan_Button);
+        scanButton.setOnClickListener(v -> startScan());
+        standaloneContainer = findViewById(R.id.BLE_Standalone_Container);
+        Button openTaskerButton = findViewById(R.id.BLE_Open_Tasker_Button);
+        openTaskerButton.setOnClickListener(v -> openTaskerOrShowHint());
         ((Button) findViewById(R.id.BLE_Save_Button)).setOnClickListener(v -> {
             mIsCancelled = false;
             finish();
@@ -79,7 +76,13 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         String previousBlurb = getIntent().getStringExtra("com.twofortyfouram.locale.intent.extra.BLURB");
         if (previousBundle != null) {
             onPostCreateWithPreviousResult(previousBundle, previousBlurb == null ? "" : previousBlurb);
+            requestInitialPermissions();
+            if (standaloneContainer != null) standaloneContainer.setVisibility(View.GONE);
+        } else {
+            if (standaloneContainer != null) standaloneContainer.setVisibility(View.VISIBLE);
         }
+
+        refreshScanButtonState();
     }
 
 
@@ -157,6 +160,21 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         stopScan();
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopScan();
+    }
+
+    private void requestInitialPermissions() {
+        if (!hasLocationPermission()) {
+            requestLocationPermission();
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasScanPermission()) {
+            requestScanPermission();
+        }
+    }
+
     private void startScan() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2) {
             Toast.makeText(this, R.string.ble_error_not_supported, Toast.LENGTH_SHORT).show();
@@ -179,6 +197,13 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         }
         isScanning = true;
 
+        bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+        if (bluetoothLeScanner == null) {
+            Toast.makeText(this, R.string.ble_error_bluetooth_unavailable, Toast.LENGTH_SHORT).show();
+            isScanning = false;
+            return;
+        }
+
         scanListAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
         scanDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.ble_scan_title)
@@ -197,13 +222,13 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
                 .create();
         scanDialog.show();
 
-        bluetoothAdapter.startLeScan(leScanCallback);
+        bluetoothLeScanner.startScan(scanCallback);
         handler.postDelayed(this::stopScan, SCAN_DURATION_MS);
     }
 
     private void stopScan() {
-        if (bluetoothAdapter != null && isScanning) {
-            bluetoothAdapter.stopLeScan(leScanCallback);
+        if (bluetoothLeScanner != null && isScanning) {
+            bluetoothLeScanner.stopScan(scanCallback);
         }
         isScanning = false;
         if (scanDialog != null && scanDialog.isShowing()) {
@@ -211,10 +236,27 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
         }
     }
 
-    private final BluetoothAdapter.LeScanCallback leScanCallback = new BluetoothAdapter.LeScanCallback() {
+    private final ScanCallback scanCallback = new ScanCallback() {
         @Override
-        public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
-            runOnUiThread(() -> addDeviceToList(device));
+        public void onScanResult(int callbackType, ScanResult result) {
+            runOnUiThread(() -> addDeviceToList(result.getDevice()));
+        }
+
+        @Override
+        public void onBatchScanResults(java.util.List<ScanResult> results) {
+            runOnUiThread(() -> {
+                for (ScanResult r : results) {
+                    addDeviceToList(r.getDevice());
+                }
+            });
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            runOnUiThread(() -> {
+                Toast.makeText(EditActivity.this, getString(R.string.ble_error_scan_failed, errorCode), Toast.LENGTH_SHORT).show();
+                stopScan();
+            });
         }
     };
 
@@ -243,9 +285,12 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
 
     private void requestScanPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT},
-                    REQUEST_BT_SCAN);
+            String[] perms = new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT};
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.BLUETOOTH_SCAN)) {
+                showPermissionRationale(R.string.ble_permission_rationale_scan, perms, REQUEST_BT_SCAN);
+            } else {
+                ActivityCompat.requestPermissions(this, perms, REQUEST_BT_SCAN);
+            }
         }
     }
 
@@ -255,9 +300,12 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
     }
 
     private void requestLocationPermission() {
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                REQUEST_LOCATION);
+        String[] perms = new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            showPermissionRationale(R.string.ble_permission_rationale_location, perms, REQUEST_LOCATION);
+        } else {
+            ActivityCompat.requestPermissions(this, perms, REQUEST_LOCATION);
+        }
     }
 
     @Override
@@ -275,6 +323,38 @@ public final class EditActivity extends AbstractAppCompatPluginActivity {
             } else {
                 Toast.makeText(this, R.string.ble_error_location_permission_denied, Toast.LENGTH_SHORT).show();
             }
+        }
+        refreshScanButtonState();
+    }
+
+    private void showPermissionRationale(int messageId, String[] permissions, int requestCode) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.ble_permission_title)
+                .setMessage(messageId)
+                .setPositiveButton(android.R.string.ok, (dialog, which) ->
+                        ActivityCompat.requestPermissions(EditActivity.this, permissions, requestCode))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void refreshScanButtonState() {
+        boolean enabled = hasScanPermission() && hasLocationPermission();
+        if (scanButton != null) {
+            scanButton.setEnabled(enabled);
+            scanButton.setText(enabled ? R.string.ble_Scan_Button : R.string.ble_scan_button_permission_needed);
+        }
+    }
+
+    private void openTaskerOrShowHint() {
+        try {
+            Intent launchIntent = getPackageManager().getLaunchIntentForPackage("net.dinglisch.android.taskerm");
+            if (launchIntent != null) {
+                startActivity(launchIntent);
+            } else {
+                Toast.makeText(this, R.string.ble_open_tasker_not_found, Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception ex) {
+            Toast.makeText(this, R.string.ble_open_tasker_not_found, Toast.LENGTH_SHORT).show();
         }
     }
 }

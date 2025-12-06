@@ -29,6 +29,41 @@
         android:hint="@string/ble_Device_Address_Hint"
         android:inputType="text" />
 
+    <LinearLayout
+        android:id="@+id/BLE_Standalone_Container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="6dip"
+        android:layout_marginTop="8dip"
+        android:layout_marginRight="6dip"
+        android:orientation="vertical"
+        android:background="@android:color/darker_gray"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/BLE_Standalone_Title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/ble_intro_title"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/BLE_Standalone_Message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/ble_intro_message"/>
+
+        <Button
+            android:id="@+id/BLE_Open_Tasker_Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/ble_intro_open_tasker"/>
+    </LinearLayout>
+
     <Button
         android:id="@+id/BLE_Scan_Button"
         android:layout_width="wrap_content"
