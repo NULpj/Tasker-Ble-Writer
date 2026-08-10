@@ -28,3 +28,9 @@ jobs:
         GITHUB_USERNAME: ${{ github.actor }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: ./gradlew clean assembleDebug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug-apk
+        path: bleWriterPluginSettingApp/build/outputs/apk/debug/*.apk
